@@ -162,12 +162,17 @@ func (a *App) apply(configFile string, simulate bool) (*[]interface{}, error) {
 		return nil, err
 	}
 
-	if a.PrintRendered {
-		fmt.Print(string(*overrides))
-	}
-
 	// Prepare to do `helm upgrade`
 	cmd := []interface{}{"upgrade", a.ID, *chart}
+
+	// Always be verbose for debugging (because 'a.PrintRendered' doesn't work for 'apply')
+	cmd = append(cmd, "--debug")
+
+	if a.PrintRendered {
+		// "enable verbose output"
+		cmd = append(cmd, "--debug")
+		fmt.Print(string(*overrides))
+	}
 
 	// "specify the exact chart version to install. If this is not specified, the latest version is installed"
 	if chartVersion != nil {
@@ -200,7 +205,9 @@ func (a *App) apply(configFile string, simulate bool) (*[]interface{}, error) {
 	cmd = append(cmd, "--values", "-")
 
 	// Run `helm upgrade
-	err = sh.Command("helm", cmd...).SetInput(string(*overrides)).Run()
+	session := sh.NewSession()
+	session.ShowCMD = true
+	err = session.Command("helm", cmd...).SetInput(string(*overrides)).Run()
 	if err != nil {
 		return &cmd, err
 	}
